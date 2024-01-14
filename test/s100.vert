@@ -1,3 +1,3 @@
-vertex entry fn main() -> vec3 {
-    return vec3(0., 0., 0.);
+vertex entry fn main() -> vec4 {
+    return vec4(0., 0., 0., 1.);
 }

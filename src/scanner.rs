@@ -38,7 +38,19 @@ pub(crate) enum ScanError {
 }
 
 lazy_static! {
-    static ref KEYWORDS: HashSet<&'static str> = HashSet::from(["vertex", "fragment", "entry", "fn", "vec3", "return"]);
+    static ref KEYWORDS: HashSet<&'static str> = HashSet::from([
+        "vertex",
+        "fragment",
+        "entry",
+        "let",
+        "fn",
+        "out",
+        "loc",
+        "vec2",
+        "vec3",
+        "vec4",
+        "void",
+        "return"]);
 }
 
 const IDENTIFIER: &str = "ID";
@@ -78,7 +90,10 @@ impl Scanner {
                 self.match_char(')')?;
             } else if current == '-' {
                 self.match_char('-')?;
-                self.match_char('>')?;
+
+                if self.current()? == '>' {
+                    self.match_char('>')?;
+                }
             } else if current == '{' {
                 self.match_char('{')?;
             } else if current == '}' {
@@ -89,6 +104,14 @@ impl Scanner {
                 self.match_char(';')?;
             } else if current == ',' {
                 self.match_char(',')?;
+            } else if current == '=' {
+                self.match_char('=')?;
+            } else if current == ':' {
+                self.match_char(':')?;
+            } else if current == '[' {
+                self.match_char('[')?;
+            } else if current == ']' {
+                self.match_char(']')?;
             } else {
                 return Err(UnexpectedChar('_', current));
             }
