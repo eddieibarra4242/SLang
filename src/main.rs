@@ -25,29 +25,29 @@ mod scanner;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Output file path
-    #[arg(short, long)]
-    output: Option<String>,
+  /// Output file path
+  #[arg(short, long)]
+  output: Option<String>,
 
-    /// input file path
-    #[arg()]
-    input: String,
+  /// input file path
+  #[arg()]
+  input: String,
 }
 
 fn main() {
-    let cli_args = Args::parse();
+  let cli_args = Args::parse();
 
-    // Scan
-    let mut scanner = Scanner::new(cli_args.input);
-    let tokens = scanner.scan().expect("Failed to scan file!"); // fixme: print better error message and don't panic.
+  // Scan
+  let mut scanner = Scanner::new(cli_args.input);
+  let tokens = scanner.scan().expect("Failed to scan file!"); // fixme: print better error message and don't panic.
 
-    for token in tokens {
-        println!("{} {}", token.kind, token.value);
-    }
+  for token in tokens {
+    println!("{} {}", token.kind, token.value);
+  }
 
-    // Parse
+  // Parse
 
-    // Annotate
+  // Annotate
 
-    // code gen
+  // code gen
 }
