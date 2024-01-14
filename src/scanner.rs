@@ -1,4 +1,7 @@
+use std::collections::HashSet;
 use std::fs;
+use std::string::ToString;
+use lazy_static::lazy_static;
 use crate::scanner::ScanError::{NoMoreChars, UnexpectedChar};
 
 #[derive(Clone, Copy, Debug)]
@@ -34,6 +37,13 @@ pub(crate) enum ScanError {
     NoMoreChars,
 }
 
+lazy_static! {
+    static ref KEYWORDS: HashSet<&'static str> = HashSet::from(["vertex", "fragment", "entry", "fn", "vec3", "return"]);
+}
+
+const IDENTIFIER: &str = "ID";
+const NUMBER_LITERAL: &str = "NUM_LIT";
+
 impl Scanner {
     pub(crate) fn new(file_path: String) -> Self {
         let file = fs::read_to_string(file_path.clone()).expect(format!("Failed to open file: {}", file_path).as_str());
@@ -50,6 +60,7 @@ impl Scanner {
     pub(crate) fn scan(&mut self) -> Result<Vec<Token>, ScanError> {
         while self.has_next() {
             let start_of_token = self.next_char;
+            let mut kind = "".to_string();
 
             let current = self.current()?;
             if current.is_whitespace() {
@@ -57,8 +68,10 @@ impl Scanner {
                 continue; // do not make whitespace tokens.
             } else if current == '_' || current.is_alphabetic() {
                 self.identifier()?;
+                kind = IDENTIFIER.to_string();
             } else if current.is_digit(10) {
                 self.literal_number()?;
+                kind = NUMBER_LITERAL.to_string();
             } else if current == '(' {
                 self.match_char('(')?;
             } else if current == ')' {
@@ -80,9 +93,15 @@ impl Scanner {
                 return Err(UnexpectedChar('_', current));
             }
 
+            let value = self.file[start_of_token..self.next_char].to_string();
+
+            if KEYWORDS.contains(value.as_str()) || kind.is_empty() {
+                kind = value.clone();
+            }
+
             self.tokens.push(Token {
-                kind: self.file[start_of_token..self.next_char].to_string(),
-                value: self.file[start_of_token..self.next_char].to_string(),
+                kind,
+                value,
                 span: Span { start: TextCoord { line_number: 0, column: 0 }, end: TextCoord { line_number: 0, column: 0 } },
             });
         }
