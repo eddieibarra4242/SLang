@@ -35,7 +35,9 @@ opt_assignment ::= ;
 opt_attr_list ::= attrs opt_attr_list;
 opt_attr_list ::= ;
 
+// todo: uniforms should go here.
 attrs ::= out;
+attrs ::= in;
 attrs ::= loc '(' NUM_LIT ')';
 
 var_decl ::= ID ':' types;

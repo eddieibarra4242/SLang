@@ -134,6 +134,12 @@ impl Scanner {
         self.match_char('*')?;
       } else if current == '/' {
         self.match_char('/')?;
+
+        if self.current()? == '/' {
+          self.match_char('/')?;
+          self.comment()?;
+          continue;
+        }
       } else if current == '%' {
         self.match_char('%')?;
       } else if current == '&' {
@@ -206,6 +212,19 @@ impl Scanner {
       line_number: self.seen_newlines + 1,
       column: (index as i64 - self.last_seen_newline_ndx) as usize,
     }
+  }
+
+  fn comment(&mut self) -> Result<(), ScanError> {
+    while self.has_next() && self.current()? != '\n' {
+      self.match_char(self.current()?)?;
+    }
+
+    if self.has_next() && self.current()? == '\n' {
+      self.seen_newlines += 1;
+      self.last_seen_newline_ndx = self.next_char as i64;
+    }
+
+    self.match_char('\n')
   }
 
   fn whitespace(&mut self) -> Result<(), ScanError> {
