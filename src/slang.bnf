@@ -8,7 +8,7 @@ global_stmt_list ::= global_stmt global_stmt_list;
 global_stmt_list ::= ;
 
 global_stmt ::= function;
-global_stmt ::= scoped_var_decl;
+global_stmt ::= global_var_decl;
 
 function ::= function_def compound_stmt;
 
@@ -28,9 +28,7 @@ param_list_non_empty ::= var_decl param_list_tail;
 param_list_tail ::= ',' param_list_non_empty;
 param_list_tail ::= ;
 
-scoped_var_decl ::= opt_attr_list let var_decl opt_assignment ';';
-opt_assignment ::= '=' expr;
-opt_assignment ::= ;
+global_var_decl ::= opt_attr_list var_decl ';';
 
 opt_attr_list ::= attrs opt_attr_list;
 opt_attr_list ::= ;
@@ -40,14 +38,21 @@ attrs ::= out;
 attrs ::= in;
 attrs ::= loc '(' NUM_LIT ')';
 
-var_decl ::= ID ':' types;
-
 compound_stmt ::= '{' stmt_list '}';
 stmt_list ::= stmt stmt_list;
 stmt_list ::= ;
 
 stmt ::= return expr ';';
-stmt ::= ID '=' expr ';';
+stmt ::= var_decl ';';
+
+var_decl ::= var_decl_keyword ID ':' types opt_assignment;
+var_decl ::= var_decl_keyword ID '=' expr;
+
+var_decl_keyword ::= let;
+var_decl_keyword ::= const;
+
+opt_assignment ::= '=' expr;
+opt_assignment ::= ;
 
 expr ::= prod_expr expr_tail;
 expr_tail ::= or expr;
