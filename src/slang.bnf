@@ -1,0 +1,125 @@
+//program is one or more:
+//  functions
+//  global variable decls w/o assignments
+
+program ::= global_stmt global_stmt_list;
+
+global_stmt_list ::= global_stmt global_stmt_list;
+global_stmt_list ::= ;
+
+global_stmt ::= function;
+global_stmt ::= scoped_var_decl;
+
+function ::= function_def compound_stmt;
+
+stage_attr ::= vertex;
+stage_attr ::= fragment;
+stage_attr ::= ;
+
+entry_attr ::= entry;
+entry_attr ::= ;
+
+function_def ::= stage_attr entry_attr fn ID parameters '->' types;
+
+parameters ::= '(' param_list ')';
+param_list ::= param_list_non_empty;
+param_list ::= ;
+param_list_non_empty ::= var_decl param_list_tail;
+param_list_tail ::= ',' param_list_non_empty;
+param_list_tail ::= ;
+
+scoped_var_decl ::= opt_attr_list let var_decl opt_assignment ';';
+opt_assignment ::= '=' expr;
+opt_assignment ::= ;
+
+opt_attr_list ::= attrs opt_attr_list;
+opt_attr_list ::= ;
+
+attrs ::= out;
+attrs ::= loc '(' NUM_LIT ')';
+
+var_decl ::= ID ':' types;
+
+compound_stmt ::= '{' stmt_list '}';
+stmt_list ::= stmt stmt_list;
+stmt_list ::= ;
+
+stmt ::= return expr ';';
+stmt ::= ID '=' expr ';';
+
+expr ::= prod_expr expr_tail;
+expr_tail ::= or expr;
+expr_tail ::= ;
+
+prod_expr ::= comp_expr prod_expr_tail;
+prod_expr_tail ::= and prod_expr;
+prod_expr_tail ::= ;
+
+comp_expr ::= add_expr comp_expr_tail;
+comp_expr_tail ::= comp_binops comp_expr;
+comp_expr_tail ::= ;
+
+add_expr ::= mul_expr add_expr_tail;
+add_expr_tail ::= add_binops add_expr;
+add_expr_tail ::= ;
+
+mul_expr ::= unary_expr mul_expr_tail;
+mul_expr_tail ::= mul_binops mul_expr;
+mul_expr_tail ::= ;
+
+unary_expr ::= base_expr;
+unary_expr ::= unary_expr_head;
+unary_expr_head ::= unary_ops unary_expr;
+
+base_expr ::= type_constructor;
+base_expr ::= id_expr;
+base_expr ::= array_literal;
+base_expr ::= NUM_LIT;
+base_expr ::= true;
+base_expr ::= false;
+base_expr ::= grouped_expr;
+
+id_expr ::= ID id_expr_tail;
+id_expr_tail ::= '[' expr ']';
+id_expr_tail ::= ;
+
+array_literal ::= '[' expr_list ']';
+
+type_constructor ::= base_types func_call_args;
+
+func_call_args ::= '(' expr_list ')';
+expr_list ::= expr expr_list_tail;
+expr_list_tail ::= ',' expr_list;
+expr_list_tail ::= ;
+
+grouped_expr ::= '(' expr ')';
+
+mul_binops ::= '*';
+mul_binops ::= '/';
+mul_binops ::= '%';
+
+add_binops ::= '+';
+add_binops ::= '-';
+
+comp_binops ::= '!=';
+comp_binops ::= '&';
+comp_binops ::= '<=';
+comp_binops ::= '<';
+comp_binops ::= '>=';
+comp_binops ::= '>';
+comp_binops ::= '==';
+comp_binops ::= '|';
+
+unary_ops ::= '-';
+unary_ops ::= not;
+
+types ::= base_types opt_indexing;
+
+// todo: NUM_LIT should be a const_expr.
+opt_indexing ::= '[' NUM_LIT ']';
+opt_indexing ::= ;
+
+base_types ::= void;
+base_types ::= vec2;
+base_types ::= vec3;
+base_types ::= vec4;

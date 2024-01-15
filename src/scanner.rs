@@ -52,8 +52,8 @@ pub(crate) struct Scanner {
 
 #[derive(Debug)]
 pub(crate) enum ScanError {
-  UnexpectedChar(char, char),
   // expected, saw
+  UnexpectedChar(char, char),
   NoMoreChars,
 }
 
@@ -126,6 +126,20 @@ impl Scanner {
         self.match_char(',')?;
       } else if current == '=' {
         self.match_char('=')?;
+      } else if current == '+' {
+        self.match_char('+')?;
+      } else if current == '-' {
+        self.match_char('-')?;
+      } else if current == '*' {
+        self.match_char('*')?;
+      } else if current == '/' {
+        self.match_char('/')?;
+      } else if current == '%' {
+        self.match_char('%')?;
+      } else if current == '&' {
+        self.match_char('&')?;
+      } else if current == '|' {
+        self.match_char('|')?;
       } else if current == ':' {
         self.match_char(':')?;
       } else if current == '[' {
@@ -145,9 +159,15 @@ impl Scanner {
       self.tokens.push(Token {
         kind,
         value,
-        span: Span { start: TextCoord { line_number: 0, column: 0 }, end: TextCoord { line_number: 0, column: 0 } },
+        span: Span { start: self.index_to_coord(start_of_token), end: self.index_to_coord(self.next_char) },
       });
     }
+
+    self.tokens.push(Token {
+      kind: "EOF".to_string(),
+      value: String::new(),
+      span: Span { start: self.index_to_coord(self.next_char), end: self.index_to_coord(self.next_char) },
+    });
 
     Ok(self.tokens.clone())
   }

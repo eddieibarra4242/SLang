@@ -20,6 +20,7 @@ use clap::Parser;
 use crate::scanner::Scanner;
 
 mod scanner;
+mod parser;
 
 /// Recursive descent parser generator
 #[derive(Parser)]
@@ -41,11 +42,9 @@ fn main() {
   let mut scanner = Scanner::new(cli_args.input);
   let tokens = scanner.scan().expect("Failed to scan file!"); // fixme: print better error message and don't panic.
 
-  for token in tokens {
-    println!("{} {}", token.kind, token.value);
-  }
-
   // Parse
+  let mut parser = parser::Parser::new(tokens);
+  parser.parse();
 
   // Annotate
 
