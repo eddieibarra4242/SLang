@@ -18,7 +18,6 @@ impl Parser {
     }
   }
 
-
   fn match_kind(&mut self, kind: &'static str) -> Result<Token, ParserError> {
     return if self.current() == kind {
       let prev = self.scanner[self.current_ndx].clone();
