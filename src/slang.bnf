@@ -44,9 +44,11 @@ stmt_list ::= ;
 
 stmt ::= return expr ';';
 stmt ::= var_decl ';';
+stmt ::= ID '=' expr ';';
 
-var_decl ::= var_decl_keyword ID ':' types opt_assignment;
-var_decl ::= var_decl_keyword ID '=' expr;
+var_decl ::= var_decl_keyword ID var_decl_tail;
+var_decl_tail ::= ':' types opt_assignment;
+var_decl_tail ::= '=' expr;
 
 var_decl_keyword ::= let;
 var_decl_keyword ::= const;
@@ -88,6 +90,7 @@ base_expr ::= grouped_expr;
 
 id_expr ::= ID id_expr_tail;
 id_expr_tail ::= '[' expr ']';
+id_expr_tail ::= func_call_args;
 id_expr_tail ::= ;
 
 array_literal ::= '[' expr_list ']';

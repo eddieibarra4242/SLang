@@ -72,6 +72,7 @@ lazy_static! {
         "vec3",
         "vec4",
         "void",
+        "not",
         "return"]);
 }
 
@@ -128,6 +129,10 @@ impl Scanner {
         self.match_char(',')?;
       } else if current == '=' {
         self.match_char('=')?;
+
+        if self.current()? == '=' {
+          self.match_char('=')?;
+        }
       } else if current == '+' {
         self.match_char('+')?;
       } else if current == '-' {
@@ -154,6 +159,21 @@ impl Scanner {
         self.match_char('[')?;
       } else if current == ']' {
         self.match_char(']')?;
+      } else if current == '!' {
+        self.match_char('!')?;
+        self.match_char('=')?;
+      } else if current == '>' {
+        self.match_char('>')?;
+
+        if self.current()? == '=' {
+          self.match_char('=')?;
+        }
+      } else if current == '<' {
+        self.match_char('<')?;
+
+        if self.current()? == '=' {
+          self.match_char('=')?;
+        }
       } else {
         return Err(UnexpectedChar('_', current));
       }
@@ -245,7 +265,7 @@ impl Scanner {
   }
 
   fn identifier(&mut self) -> Result<(), ScanError> {
-    let mut current = self.current()?;
+    let current = self.current()?;
 
     if current == '_' || current.is_alphabetic() {
       self.match_char(current)?;

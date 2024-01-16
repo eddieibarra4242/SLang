@@ -5,7 +5,7 @@ out loc(0) let outColor: vec4;
 const lightDir: vec3 = vec3(1., 1., 1.);
 
 fragment entry fn main() -> void {
+    // lambertian shading.
     let lightAmt = clamp(dot(-lightDir, normal), 0.2, 1.0);
-
     outColor = vec4(fragColor * lightAmt, 1.0);
 }

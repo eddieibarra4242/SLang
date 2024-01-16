@@ -44,7 +44,11 @@ fn main() {
 
   // Parse
   let mut parser = parser::Parser::new(tokens);
-  parser.parse();
+  let result = parser.parse();
+
+  if result.is_err() {
+    return;
+  }
 
   // Annotate
 
