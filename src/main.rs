@@ -21,6 +21,7 @@ use crate::scanner::Scanner;
 
 mod scanner;
 mod parser;
+mod ast;
 
 /// Recursive descent parser generator
 #[derive(Parser)]

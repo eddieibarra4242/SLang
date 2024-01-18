@@ -1,5 +1,14 @@
+use crate::ast::{Expr, Id};
+use crate::ast::Expr::{*};
+use crate::ast::Literal::{Array, Boolean, Number};
+use crate::parser::IdExprTail::{ArrayIndex, FuncCall};
 use crate::parser::ParserError::UnexpectedToken;
 use crate::scanner::Token;
+
+enum IdExprTail {
+  ArrayIndex(Expr),
+  FuncCall(Vec<Expr>)
+}
 
 pub(crate) enum ParserError {
   UnexpectedToken(Token, Vec<&'static str>)
@@ -8,6 +17,15 @@ pub(crate) enum ParserError {
 pub(crate) struct Parser {
   scanner: Vec<Token>,
   current_ndx: usize,
+}
+
+fn bin_expr_unwrap_or(lhs: Expr, bin_expr: Option<(Token, Expr)>) -> Expr {
+  if bin_expr.is_none() {
+    lhs
+  } else {
+    let (op, rhs) = bin_expr.unwrap();
+    BinaryExpr(op, Box::new(lhs), Box::new(rhs))
+  }
 }
 
 impl Parser {
@@ -313,327 +331,344 @@ impl Parser {
     }
   }
 
-  fn expr(&mut self) -> Result<(), ParserError> {
+  fn expr(&mut self) -> Result<Expr, ParserError> {
     if ["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.prod_expr()?;
-      self.expr_tail()?;
-      Ok(())
+      let lhs = self.prod_expr()?;
+      let bin_expr = self.expr_tail()?;
+      let res = bin_expr_unwrap_or(lhs, bin_expr);
+      println!("{:?}\n", res);
+      Ok(res)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn expr_tail(&mut self) -> Result<(), ParserError> {
+  fn expr_tail(&mut self) -> Result<Option<(Token, Expr)>, ParserError> {
     if ["or"].contains(&self.current()) {
-      self.match_kind("or")?;
-      self.expr()?;
-      Ok(())
+      let op = self.match_kind("or")?;
+      let rhs = self.expr()?;
+      Ok(Some((op, rhs)))
     } else if [")", ",", ";", "]"].contains(&self.current()) {
       // do nothing
-      Ok(())
+      Ok(None)
     } else {
       Err(UnexpectedToken(self.current_token(), vec![")", ",", ";", "]", "or"]))
     }
   }
 
-  fn prod_expr(&mut self) -> Result<(), ParserError> {
+  fn prod_expr(&mut self) -> Result<Expr, ParserError> {
     if ["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.comp_expr()?;
-      self.prod_expr_tail()?;
-      Ok(())
+      let lhs = self.comp_expr()?;
+      let bin_expr = self.prod_expr_tail()?;
+      Ok(bin_expr_unwrap_or(lhs, bin_expr))
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn prod_expr_tail(&mut self) -> Result<(), ParserError> {
+  fn prod_expr_tail(&mut self) -> Result<Option<(Token, Expr)>, ParserError> {
     if ["and"].contains(&self.current()) {
-      self.match_kind("and")?;
-      self.prod_expr()?;
-      Ok(())
+      let op = self.match_kind("and")?;
+      let rhs = self.prod_expr()?;
+      Ok(Some((op, rhs)))
     } else if [")", ",", ";", "]", "or"].contains(&self.current()) {
       // do nothing
-      Ok(())
+      Ok(None)
     } else {
       Err(UnexpectedToken(self.current_token(), vec![")", ",", ";", "]", "and", "or"]))
     }
   }
 
-  fn comp_expr(&mut self) -> Result<(), ParserError> {
+  fn comp_expr(&mut self) -> Result<Expr, ParserError> {
     if ["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.add_expr()?;
-      self.comp_expr_tail()?;
-      Ok(())
+      let lhs = self.add_expr()?;
+      let bin_expr = self.comp_expr_tail()?;
+      Ok(bin_expr_unwrap_or(lhs, bin_expr))
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn comp_expr_tail(&mut self) -> Result<(), ParserError> {
+  fn comp_expr_tail(&mut self) -> Result<Option<(Token, Expr)>, ParserError> {
     if ["!=", "&", "<", "<=", "==", ">", ">=", "|"].contains(&self.current()) {
-      self.comp_binops()?;
-      self.comp_expr()?;
-      Ok(())
+      let op = self.comp_binops()?;
+      let rhs = self.comp_expr()?;
+      Ok(Some((op, rhs)))
     } else if [")", ",", ";", "]", "and", "or"].contains(&self.current()) {
       // do nothing
-      Ok(())
+      Ok(None)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["!=", "&", ")", ",", ";", "<", "<=", "==", ">", ">=", "]", "|", "and", "or"]))
     }
   }
 
-  fn add_expr(&mut self) -> Result<(), ParserError> {
+  fn add_expr(&mut self) -> Result<Expr, ParserError> {
     if ["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.mul_expr()?;
-      self.add_expr_tail()?;
-      Ok(())
+      let lhs = self.mul_expr()?;
+      let bin_expr = self.add_expr_tail()?;
+      Ok(bin_expr_unwrap_or(lhs, bin_expr))
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn add_expr_tail(&mut self) -> Result<(), ParserError> {
+  fn add_expr_tail(&mut self) -> Result<Option<(Token, Expr)>, ParserError> {
     if ["+", "-"].contains(&self.current()) {
-      self.add_binops()?;
-      self.add_expr()?;
-      Ok(())
+      let token = self.add_binops()?;
+      let rhs = self.add_expr()?;
+      Ok(Some((token, rhs)))
     } else if ["!=", "&", ")", ",", ";", "<", "<=", "==", ">", ">=", "]", "|", "and", "or"].contains(&self.current()) {
       // do nothing
-      Ok(())
+      Ok(None)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["!=", "&", ")", "+", ",", "-", ";", "<", "<=", "==", ">", ">=", "]", "|", "and", "or"]))
     }
   }
 
-  fn mul_expr(&mut self) -> Result<(), ParserError> {
+  fn mul_expr(&mut self) -> Result<Expr, ParserError> {
     if ["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.unary_expr()?;
-      self.mul_expr_tail()?;
-      Ok(())
+      let lhs = self.unary_expr()?;
+      let bin_expr = self.mul_expr_tail()?;
+      Ok(bin_expr_unwrap_or(lhs, bin_expr))
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn mul_expr_tail(&mut self) -> Result<(), ParserError> {
+  fn mul_expr_tail(&mut self) -> Result<Option<(Token, Expr)>, ParserError> {
     if ["%", "*", "/"].contains(&self.current()) {
-      self.mul_binops()?;
-      self.mul_expr()?;
-      Ok(())
+      let op = self.mul_binops()?;
+      let rhs = self.mul_expr()?;
+      Ok(Some((op, rhs)))
     } else if ["!=", "&", ")", "+", ",", "-", ";", "<", "<=", "==", ">", ">=", "]", "|", "and", "or"].contains(&self.current()) {
       // do nothing
-      Ok(())
+      Ok(None)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["!=", "%", "&", ")", "*", "+", ",", "-", "/", ";", "<", "<=", "==", ">", ">=", "]", "|", "and", "or"]))
     }
   }
 
-  fn unary_expr(&mut self) -> Result<(), ParserError> {
+  fn unary_expr(&mut self) -> Result<Expr, ParserError> {
     if ["(", "[", "ID", "NUM_LIT", "false", "true", "vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.base_expr()?;
-      Ok(())
+      let expr = self.base_expr()?;
+      Ok(expr)
     } else if ["-", "not"].contains(&self.current()) {
-      self.unary_expr_head()?;
-      Ok(())
+      let expr = self.unary_expr_head()?;
+      Ok(expr)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn unary_expr_head(&mut self) -> Result<(), ParserError> {
+  fn unary_expr_head(&mut self) -> Result<Expr, ParserError> {
     if ["-", "not"].contains(&self.current()) {
-      self.unary_ops()?;
-      self.unary_expr()?;
-      Ok(())
+      let op = self.unary_ops()?;
+      let expr = self.unary_expr()?;
+      Ok(UnaryExpr(op, Box::new(expr)))
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["-", "not"]))
     }
   }
 
-  fn base_expr(&mut self) -> Result<(), ParserError> {
+  fn base_expr(&mut self) -> Result<Expr, ParserError> {
     if ["vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.type_constructor()?;
-      Ok(())
+      let expr = self.type_constructor()?;
+      Ok(expr)
     } else if ["ID"].contains(&self.current()) {
-      self.id_expr()?;
-      Ok(())
+      let expr = self.id_expr()?;
+      Ok(expr)
     } else if ["["].contains(&self.current()) {
-      self.array_literal()?;
-      Ok(())
+      let expr = self.array_literal()?;
+      Ok(expr)
     } else if ["NUM_LIT"].contains(&self.current()) {
-      self.match_kind("NUM_LIT")?;
-      Ok(())
+      let token = self.match_kind("NUM_LIT")?;
+      Ok(LiteralExpr(Number(token)))
     } else if ["true"].contains(&self.current()) {
-      self.match_kind("true")?;
-      Ok(())
+      let token = self.match_kind("true")?;
+      Ok(LiteralExpr(Boolean(token, true)))
     } else if ["false"].contains(&self.current()) {
-      self.match_kind("false")?;
-      Ok(())
+      let token = self.match_kind("false")?;
+      Ok(LiteralExpr(Boolean(token, false)))
     } else if ["("].contains(&self.current()) {
-      self.grouped_expr()?;
-      Ok(())
+      let expr = self.grouped_expr()?;
+      Ok(expr)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["(", "[", "ID", "NUM_LIT", "false", "true", "vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn id_expr(&mut self) -> Result<(), ParserError> {
+  fn id_expr(&mut self) -> Result<Expr, ParserError> {
     if ["ID"].contains(&self.current()) {
-      self.match_kind("ID")?;
-      self.id_expr_tail()?;
-      Ok(())
+      let token = self.match_kind("ID")?;
+      let tail_wrapped = self.id_expr_tail()?;
+
+      let id = Id::new(token);
+
+      if tail_wrapped.is_none() {
+        Ok(IdExpr(id))
+      } else {
+        Ok(match tail_wrapped.unwrap() {
+          ArrayIndex(index) => {
+            ArrayLookupExpr(Box::new(IdExpr(id)), Box::new(index))
+          }
+          FuncCall(arg_list) => {
+            FunctionExpr(id, arg_list)
+          }
+        })
+      }
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["ID"]))
     }
   }
 
-  fn id_expr_tail(&mut self) -> Result<(), ParserError> {
+  fn id_expr_tail(&mut self) -> Result<Option<IdExprTail>, ParserError> {
     if ["["].contains(&self.current()) {
       self.match_kind("[")?;
-      self.expr()?;
+      let index = self.expr()?;
       self.match_kind("]")?;
-      Ok(())
+      Ok(Some(ArrayIndex(index)))
     } else if ["("].contains(&self.current()) {
-      self.func_call_args()?;
-      Ok(())
+      let arg_list = self.func_call_args()?;
+      Ok(Some(FuncCall(arg_list)))
     } else if ["!=", "%", "&", ")", "*", "+", ",", "-", "/", ";", "<", "<=", "==", ">", ">=", "]", "|", "and", "or"].contains(&self.current()) {
       // do nothing
-      Ok(())
+      Ok(None)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["!=", "%", "&", "(", ")", "*", "+", ",", "-", "/", ";", "<", "<=", "==", ">", ">=", "[", "]", "|", "and", "or"]))
     }
   }
 
-  fn array_literal(&mut self) -> Result<(), ParserError> {
+  fn array_literal(&mut self) -> Result<Expr, ParserError> {
     if ["["].contains(&self.current()) {
       self.match_kind("[")?;
-      self.expr_list()?;
+      let values = self.expr_list()?;
       self.match_kind("]")?;
-      Ok(())
+      Ok(LiteralExpr(Array(values)))
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["["]))
     }
   }
 
-  fn type_constructor(&mut self) -> Result<(), ParserError> {
+  fn type_constructor(&mut self) -> Result<Expr, ParserError> {
     if ["vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.base_types()?;
-      self.func_call_args()?;
-      Ok(())
+      let func_name = self.base_types()?;
+      let arg_list = self.func_call_args()?;
+      Ok(FunctionExpr(Id::new(func_name), arg_list))
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn func_call_args(&mut self) -> Result<(), ParserError> {
+  fn func_call_args(&mut self) -> Result<Vec<Expr>, ParserError> {
     if ["("].contains(&self.current()) {
       self.match_kind("(")?;
-      self.expr_list()?;
+      let arg_list = self.expr_list()?;
       self.match_kind(")")?;
-      Ok(())
+      Ok(arg_list)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["("]))
     }
   }
 
-  fn expr_list(&mut self) -> Result<(), ParserError> {
+  fn expr_list(&mut self) -> Result<Vec<Expr>, ParserError> {
     if ["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"].contains(&self.current()) {
-      self.expr()?;
-      self.expr_list_tail()?;
-      Ok(())
+      let head = self.expr()?;
+      let mut tail = self.expr_list_tail()?;
+      tail.insert(0, head);
+      Ok(tail)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["(", "-", "[", "ID", "NUM_LIT", "false", "not", "true", "vec2", "vec3", "vec4", "void"]))
     }
   }
 
-  fn expr_list_tail(&mut self) -> Result<(), ParserError> {
+  fn expr_list_tail(&mut self) -> Result<Vec<Expr>, ParserError> {
     if [","].contains(&self.current()) {
       self.match_kind(",")?;
-      self.expr_list()?;
-      Ok(())
+      let list = self.expr_list()?;
+      Ok(list)
     } else if [")", "]"].contains(&self.current()) {
       // do nothing
-      Ok(())
+      Ok(vec![])
     } else {
       Err(UnexpectedToken(self.current_token(), vec![")", ",", "]"]))
     }
   }
 
-  fn grouped_expr(&mut self) -> Result<(), ParserError> {
+  fn grouped_expr(&mut self) -> Result<Expr, ParserError> {
     if ["("].contains(&self.current()) {
       self.match_kind("(")?;
-      self.expr()?;
+      let expr = self.expr()?;
       self.match_kind(")")?;
-      Ok(())
+      Ok(expr)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["("]))
     }
   }
 
-  fn mul_binops(&mut self) -> Result<(), ParserError> {
+  fn mul_binops(&mut self) -> Result<Token, ParserError> {
     if ["*"].contains(&self.current()) {
-      self.match_kind("*")?;
-      Ok(())
+      let token = self.match_kind("*")?;
+      Ok(token)
     } else if ["/"].contains(&self.current()) {
-      self.match_kind("/")?;
-      Ok(())
+      let token = self.match_kind("/")?;
+      Ok(token)
     } else if ["%"].contains(&self.current()) {
-      self.match_kind("%")?;
-      Ok(())
+      let token = self.match_kind("%")?;
+      Ok(token)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["%", "*", "/"]))
     }
   }
 
-  fn add_binops(&mut self) -> Result<(), ParserError> {
+  fn add_binops(&mut self) -> Result<Token, ParserError> {
     if ["+"].contains(&self.current()) {
-      self.match_kind("+")?;
-      Ok(())
+      let token = self.match_kind("+")?;
+      Ok(token)
     } else if ["-"].contains(&self.current()) {
-      self.match_kind("-")?;
-      Ok(())
+      let token = self.match_kind("-")?;
+      Ok(token)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["+", "-"]))
     }
   }
 
-  fn comp_binops(&mut self) -> Result<(), ParserError> {
+  fn comp_binops(&mut self) -> Result<Token, ParserError> {
     if ["!="].contains(&self.current()) {
-      self.match_kind("!=")?;
-      Ok(())
+      let token = self.match_kind("!=")?;
+      Ok(token)
     } else if ["&"].contains(&self.current()) {
-      self.match_kind("&")?;
-      Ok(())
+      let token = self.match_kind("&")?;
+      Ok(token)
     } else if ["<="].contains(&self.current()) {
-      self.match_kind("<=")?;
-      Ok(())
+      let token = self.match_kind("<=")?;
+      Ok(token)
     } else if ["<"].contains(&self.current()) {
-      self.match_kind("<")?;
-      Ok(())
+      let token = self.match_kind("<")?;
+      Ok(token)
     } else if [">="].contains(&self.current()) {
-      self.match_kind(">=")?;
-      Ok(())
+      let token = self.match_kind(">=")?;
+      Ok(token)
     } else if [">"].contains(&self.current()) {
-      self.match_kind(">")?;
-      Ok(())
+      let token = self.match_kind(">")?;
+      Ok(token)
     } else if ["=="].contains(&self.current()) {
-      self.match_kind("==")?;
-      Ok(())
+      let token = self.match_kind("==")?;
+      Ok(token)
     } else if ["|"].contains(&self.current()) {
-      self.match_kind("|")?;
-      Ok(())
+      let token = self.match_kind("|")?;
+      Ok(token)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["!=", "&", "<", "<=", "==", ">", ">=", "|"]))
     }
   }
 
-  fn unary_ops(&mut self) -> Result<(), ParserError> {
+  fn unary_ops(&mut self) -> Result<Token, ParserError> {
     if ["-"].contains(&self.current()) {
-      self.match_kind("-")?;
-      Ok(())
+      let token = self.match_kind("-")?;
+      Ok(token)
     } else if ["not"].contains(&self.current()) {
-      self.match_kind("not")?;
-      Ok(())
+      let token =self.match_kind("not")?;
+      Ok(token)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["-", "not"]))
     }
@@ -663,19 +698,19 @@ impl Parser {
     }
   }
 
-  fn base_types(&mut self) -> Result<(), ParserError> {
+  fn base_types(&mut self) -> Result<Token, ParserError> {
     if ["void"].contains(&self.current()) {
-      self.match_kind("void")?;
-      Ok(())
+      let token = self.match_kind("void")?;
+      Ok(token)
     } else if ["vec2"].contains(&self.current()) {
-      self.match_kind("vec2")?;
-      Ok(())
+      let token = self.match_kind("vec2")?;
+      Ok(token)
     } else if ["vec3"].contains(&self.current()) {
-      self.match_kind("vec3")?;
-      Ok(())
+      let token = self.match_kind("vec3")?;
+      Ok(token)
     } else if ["vec4"].contains(&self.current()) {
-      self.match_kind("vec4")?;
-      Ok(())
+      let token = self.match_kind("vec4")?;
+      Ok(token)
     } else {
       Err(UnexpectedToken(self.current_token(), vec!["vec2", "vec3", "vec4", "void"]))
     }
